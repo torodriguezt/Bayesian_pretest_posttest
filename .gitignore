@@ -35,3 +35,5 @@ Thumbs.db
 # Comentar las siguientes líneas si querés versionar los outputs:
 # output/*.rds
 # output/*.log
+
+*.tex
