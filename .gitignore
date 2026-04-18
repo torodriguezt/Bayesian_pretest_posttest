@@ -1,0 +1,37 @@
+# R / RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rcheck/
+
+# Compiled C++ from Rcpp::sourceCpp
+*.o
+*.so
+*.dll
+*_sourceCpp/
+
+# LaTeX intermediates
+*.aux
+*.log
+*.out
+*.toc
+*.bbl
+*.blg
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Outputs (regenerados al correr build_article_tables.R)
+# Comentar las siguientes líneas si querés versionar los outputs:
+# output/*.rds
+# output/*.log
