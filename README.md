@@ -1,107 +1,79 @@
-# BivBetaBinomial — Adaptive cutoff k\* for the FBST in the bivariate Beta-Binomial model
+# Bayesian analysis for pretest-posttest binary outcomes with adaptive significance levels
 
-Código de soporte del artículo *"Bayesian hypothesis testing in the bivariate Beta-Binomial model with FBST: adaptive cutoff calibration"*.
+Support code for *"Bayesian hypothesis testing in the bivariate Beta-Binomial model with FBST: adaptive cutoff calibration"*.
 
-Implementa un motor en C++ (vía Rcpp) para calcular el e-valor FBST y los cutoffs adaptativos k\* sin recurrir a MCMC, validado contra una implementación de referencia con Stan.
+C++ engine (via Rcpp) for FBST e-values and adaptive cutoffs k\* without MCMC, validated against Stan.
 
 ---
 
-## Estructura
+## Structure
 
-```
-.
-├── BivBetaBinom.cpp              # Motor C++: posterior cerrada, ev, simulaciones, k*
-├── BBpost3.stan                  # Modelo Stan (referencia para validación)
-├── Article.tex                   # Manuscrito
-│
-├── build_article_tables.R        # Pipeline principal: genera Tablas A y B
-├── build_kstar_table.R           # Helpers + demos para la Tabla A
-├── replicate_tab2.R              # Reproduce los k* de tab2 del paper (posterior-based)
-├── validate_ev_quad.R            # Valida ev por cuadratura vs MCMC (Stan)
-├── THKS_run.R                    # Pipeline completo del experimento THKS
-│
-├── Figures/                      # Figuras generadas
-├── output/                       # Tablas LaTeX y .rds resultantes
-└── original_poster_code/         # Código del poster original (con bugs documentados)
+```text
+BivBetaBinom.cpp          # Core engine: posterior, e-value, simulations, k*
+BBpost3.stan              # Stan model (validation reference)
+Article.tex               # Manuscript
+build_article_tables.R    # Main pipeline: generates Tables A and B
+build_kstar_table.R       # k* table builder + helpers
+replicate_tab2.R          # Reproduces paper's tab2 (posterior-based)
+validate_ev_quad.R        # Validates quadrature e-value vs MCMC (Stan)
+make_figures.R            # Regenerates all figures
+THKS_run.R                # Full THKS experiment pipeline
+output/                   # Generated LaTeX tables and .rds files
+Figures/                  # Generated figures
+original_poster_code/     # Original poster code (with documented bugs)
 ```
 
 ---
 
-## Cómo correr
+## Quick start
 
-Pre-requisitos: R ≥ 4.2, paquetes `Rcpp`, `dplyr`, `tidyr`, `ggplot2`, `ALA` (datos THKS), `rstan` (sólo para validación).
+Requirements: R ≥ 4.2, packages `Rcpp`, `dplyr`, `tidyr`, `ggplot2`, `ALA`, `rstan` (validation only).
 
 ```r
-setwd("ruta/al/repo")
+setwd("path/to/repo")
 
-# 1) Validar que el motor C++ coincide con MCMC (~1 min)
-source("validate_ev_quad.R")
-
-# 2) Generar las tablas del artículo (~3 hs con M = 2000)
-source("build_article_tables.R")
-#   → output/kstar_prior_table.tex     (Tabla A: genérica k*(n1, n2))
-#   → output/kstar_posterior_table.tex (Tabla B: per-tratamiento THKS)
-
-# 3) (Opcional) Reproducir tab2 del paper bajo posterior-based
-source("replicate_tab2.R")
+source("validate_ev_quad.R")       # validate C++ engine vs MCMC (~1 min)
+source("build_article_tables.R")   # generate Tables A and B (~3 h, M=2000)
+source("make_figures.R")           # regenerate all figures (~10 min, M=1000)
 ```
 
----
+**Outputs:**
 
-## Hallazgos metodológicos
-
-### 1. Bugs en el código del poster original (`original_poster_code/`)
-
-Al revisar `alpha_final_THKS.R` y `beta_final_THKS.R` se detectaron **dos errores fundamentales**:
-
-- **Estimador MC mal construido**: el indicador `I(ev ≤ k)` se multiplica por la verosimilitud `f(x|θ)` antes de promediar. Esto computa `E_X[f(X|θ)·𝟙]` en lugar de `E_X[𝟙]`, sesgando α y β.
-- **θ ~ Uniform(0,1) en lugar de θ ~ f_H** para el cálculo de α. Ignora el peso de la "integral de línea" derivada en el apéndice del artículo.
-
-Ambos están corregidos en este motor.
-
-### 2. La prior KL-óptima restringida a H es impropia
-
-Con (α₀, α₁, α₂) = (0.8374, 0.8411, 0.8053):
-
-> f_H(t) ∝ t^{α₁+α₂−2} · (1−t)^{α₀−2} · (1+t)^{−α}
-
-Como α₀ < 1, el exponente de (1−t) es **−1.16** y `∫₀¹ (1−t)^{−1.16} dt = ∞`. La densidad de la prior restringida a la línea θ₁=θ₂ **diverge en t→1**.
-
-Consecuencia práctica visible en [Figures/error_curves_n25.png](Figures/error_curves_n25.png): para n=25, el α salta abruptamente cerca de 0 y el mínimo de α+β queda en ≈0.97. La formulación posterior-based "se salva" porque la verosimilitud Bin(x|n,θ)→0 cerca de t=1 cuando x<n, dominando la singularidad de la prior.
-
-### 3. ev validado contra MCMC
-
-`ev_quad` (cuadratura de Simpson 2D sobre la posterior cerrada) reproduce `ev_FBST` (10 000 muestras MCMC con Stan) hasta ~3 decimales. Speedup: **~900×** (8 ms vs 7 s).
-
-### 4. Tablas resultantes
-
-- **Tabla A — `output/kstar_prior_table.tex`**: lookup genérico k\*(n₁, n₂) en grilla {10, 20, 30, 40, 50, 75, 100, 150, 200}, M=2000.
-- **Tabla B — `output/kstar_posterior_table.tex`**: k\* per-tratamiento del THKS, posterior-based. Reemplaza tab2 del manuscrito.
-
-Para los 4 tratamientos del THKS, la decisión final coincide con el paper original (rechazar H en todos), pero los k\* difieren — los nuestros son los corregidos.
+- `output/kstar_prior_table.tex` — Table A: generic k\*(n₁, n₂) lookup
+- `output/kstar_posterior_table.tex` — Table B: per-treatment k\* for THKS
 
 ---
 
-## API del motor
+## Key findings
 
-Funciones principales en [BivBetaBinom.cpp](BivBetaBinom.cpp):
+**Bugs in original poster code** (`original_poster_code/`): two errors in `alpha_final_THKS.R` / `beta_final_THKS.R`:
 
-| Función | Descripción |
-|---|---|
-| `bb_constants(n1, n2, x1, x2, a0, a1, a2)` | Precomputa `log_C` (incluye `−log ₃F₂(1)`) y exponentes de la posterior |
-| `densBB_cpp / vec / grid` | Densidad bivariada en θ |
-| `densBB_H_cpp / vec` | Densidad restringida a H |
-| `find_sup_H(consts)` | Supremo bajo H (grid search determinístico) |
-| `ev_quad(consts, sup_H)` | e-valor por cuadratura 2D |
-| `ev_quad_from_data(...)` | Wrapper conveniente |
-| `simulate_evs_H / A` | Distribuciones de ev bajo prior (formulación 10-11) |
-| `simulate_evs_H_post / A_post` | Distribuciones de ev bajo posterior (formulación 16-17) |
-| `find_kstar(ev_H, ev_A, a, b)` | k\* = argmin(a·α + b·β) por enumeración exacta |
+1. MC estimator multiplies indicator `𝟙(ev ≤ k)` by likelihood `f(x|θ)`, computing `E[f(X|θ)·𝟙]` instead of `E[𝟙]`.
+2. θ sampled from Uniform(0,1) instead of f_H for the α calculation.
+
+**Improper prior on H**: with KL-optimal hyperparameters (α₀=0.84, α₁=0.84, α₂=0.81), the restricted prior `f_H(t) ∝ t^(α₁+α₂−2)(1−t)^(α₀−2)` diverges at t→1 since α₀−2 ≈ −1.16. This explains the abrupt α jump in the prior-based error curves.
+
+**Quadrature vs MCMC**: `ev_quad` (2D Simpson) matches Stan MCMC to ~3 decimal places at ~900× speedup (8 ms vs 7 s).
 
 ---
 
-## Referencias
+## Engine API ([BivBetaBinom.cpp](BivBetaBinom.cpp))
 
-- Pereira, C. A. B., & Stern, J. M. (1999). Evidence and credibility: full Bayesian significance test for precise hypotheses. *Entropy*.
-- Olkin, I., & Liu, R. (2003). A bivariate beta distribution. *Statistics & Probability Letters*.
-- Datos THKS: paquete R `ALA` (`tvsfp`).
+| Function | Description |
+| --- | --- |
+| `bb_constants(...)` | Precomputes log normalizing constant and posterior exponents |
+| `densBB_cpp / vec / grid` | Bivariate posterior density |
+| `densBB_H_cpp / vec` | Density restricted to H (θ₁=θ₂) |
+| `find_sup_H(consts)` | Supremum under H via grid search |
+| `ev_quad(consts, sup_H)` | E-value by 2D quadrature |
+| `simulate_evs_H / A` | E-value distributions under prior (eqs 10-11) |
+| `simulate_evs_H_post / A_post` | E-value distributions under posterior (eqs 16-17) |
+| `find_kstar(ev_H, ev_A, a, b)` | k\* = argmin(a·α + b·β) |
+
+---
+
+## References
+
+- Pereira & Stern (1999). Evidence and credibility: full Bayesian significance test. *Entropy*.
+- Olkin & Liu (2003). A bivariate beta distribution. *Statistics & Probability Letters*.
+- THKS data: R package `ALA` (`tvsfp`).
