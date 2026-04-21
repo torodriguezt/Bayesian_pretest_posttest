@@ -14,6 +14,7 @@ library(dplyr)
 library(Rcpp)
 library(ggplot2)
 library(tidyr)
+library(lattice)
 
 setwd("c:/Users/Tomas/BivBetaBinomial_Tomás/BivBetaBinomial_Tomás")
 sourceCpp("BivBetaBinom.cpp")
@@ -44,7 +45,7 @@ plot_error_curves <- function(ev_H, ev_A, title, save_path,
              hjust = -0.1, size = 3.5) +
     scale_color_manual(values = c("steelblue", "tomato", "black")) +
     scale_linetype_manual(values = c("solid", "solid", "dashed")) +
-    labs(x = "k", y = "Error promediado", title = title,
+    labs(x = "k", y = "Averaged error", title = title,
          color = NULL, linetype = NULL) +
     theme_bw() + theme(legend.position = "top")
   ggsave(save_path, p, width = 6, height = 4, dpi = 150)
@@ -117,7 +118,7 @@ for (k in names(grupos)) {
 # ---------------------------------------------------------------------------
 # 3) Superficies posteriores bivariadas — los 4 grupos del THKS
 # ---------------------------------------------------------------------------
-cat("\n=== Superficies posteriores (THKS) ===\n")
+cat("\n=== Posterior surfaces (THKS) ===\n")
 for (k in names(grupos)) {
   g <- grupos[[k]]$g; lab <- grupos[[k]]$lab
   n1 <- g$n[1]; n2 <- g$n[2]; x1 <- g$X[1]; x2 <- g$X[2]
@@ -125,16 +126,27 @@ for (k in names(grupos)) {
   xs <- seq(0.01, 0.99, length.out = 80)
   ys <- seq(0.01, 0.99, length.out = 80)
   z  <- densBB_grid(xs, ys, consts)
+  df <- expand.grid(theta1 = xs, theta2 = ys)
+  df$density <- as.vector(z)
+  p <- wireframe(
+    density ~ theta1 * theta2, data = df,
+    xlab = expression(theta[1]),
+    ylab = expression(theta[2]),
+    zlab = NULL,
+    main = sprintf("%s (n1=%d, n2=%d, x1=%d, x2=%d)",
+                   lab, n1, n2, x1, x2),
+    scales = list(arrows = FALSE, cex = 0.7),
+    drape = TRUE,
+    col.regions = "gold",
+    colorkey = FALSE,
+    screen = list(z = -30, x = -60),
+    par.settings = list(axis.line = list(col = "transparent"))
+  )
   png(sprintf("Figures/posterior_surface_%s.png", k),
       width = 700, height = 600, res = 100)
-  persp(xs, ys, z, theta = -30, phi = 25, shade = 0.75,
-        col = "gold", expand = 0.5, r = 2, ltheta = 25,
-        ticktype = "detailed",
-        xlab = "theta_1", ylab = "theta_2", zlab = "densidad",
-        main = sprintf("%s (n1=%d, n2=%d, x1=%d, x2=%d)",
-                       lab, n1, n2, x1, x2))
+  print(p)
   dev.off()
-  cat(sprintf("  → Figures/posterior_surface_%s.png\n", k))
+  cat(sprintf("  -> Figures/posterior_surface_%s.png\n", k))
 }
 
 cat("\n=== Listo ===\n")
