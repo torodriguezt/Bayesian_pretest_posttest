@@ -44,19 +44,6 @@ source("make_figures.R")           # regenerate all figures (~10 min, M=1000)
 
 ---
 
-## Key findings
-
-**Bugs in original poster code** (`original_poster_code/`): two errors in `alpha_final_THKS.R` / `beta_final_THKS.R`:
-
-1. MC estimator multiplies indicator `𝟙(ev ≤ k)` by likelihood `f(x|θ)`, computing `E[f(X|θ)·𝟙]` instead of `E[𝟙]`.
-2. θ sampled from Uniform(0,1) instead of f_H for the α calculation.
-
-**Improper prior on H**: with KL-optimal hyperparameters (α₀=0.84, α₁=0.84, α₂=0.81), the restricted prior `f_H(t) ∝ t^(α₁+α₂−2)(1−t)^(α₀−2)` diverges at t→1 since α₀−2 ≈ −1.16. This explains the abrupt α jump in the prior-based error curves.
-
-**Quadrature vs MCMC**: `ev_quad` (2D Simpson) matches Stan MCMC to ~3 decimal places at ~900× speedup (8 ms vs 7 s).
-
----
-
 ## Engine API ([BivBetaBinom.cpp](BivBetaBinom.cpp))
 
 | Function | Description |
