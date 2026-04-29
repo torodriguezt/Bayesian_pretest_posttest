@@ -10,12 +10,14 @@ library(ALA)
 library(dplyr)
 library(Rcpp)
 
-setwd("c:/Users/Tomas/BivBetaBinomial_Tomás/BivBetaBinomial_Tomás")
+# setwd("c:/Users/Tomas/BivBetaBinomial_Tomás/BivBetaBinomial_Tomás")
 sourceCpp("BivBetaBinom.cpp")
 dir.create("output", showWarnings = FALSE)
 
-a0_kl  <- 0.8373879; a1_kl  <- 0.8410984; a2_kl  <- 0.8053298
-a0_inf <- 10;        a1_inf <- 10;        a2_inf <- 10
+source("priors_config.R")
+a0_kl   <- prior_NI["a0"];   a1_kl   <- prior_NI["a1"];   a2_kl   <- prior_NI["a2"]
+a0_inf  <- prior_INF["a0"];  a1_inf  <- prior_INF["a1"];  a2_inf  <- prior_INF["a2"]
+a0_conf <- prior_CONF["a0"]; a1_conf <- prior_CONF["a1"]; a2_conf <- prior_CONF["a2"]
 M      <- 2000
 
 # ---------------------------------------------------------------------------
@@ -114,16 +116,17 @@ print(tab2, row.names = FALSE)
 tex2 <- to_latex(
   tab2,
   label   = "tab2",
-  caption = paste0(
+  caption = sprintf(paste0(
     "TVSFP Project: Bayesian hypothesis testing with non-informative prior ",
-    "(KL-optimal, $\\alpha_0=0.84,\\,\\alpha_1=0.84,\\,\\alpha_2=0.81$), ",
-    "posterior-based formulation, $a=b=1$, $M=", M, "$.")
+    "(KL-optimal: $\\alpha_0=%.3f,\\,\\alpha_1=%.3f,\\,\\alpha_2=%.3f$), ",
+    "posterior-based formulation, $a=b=1$, $M=%d$."),
+    a0_kl, a1_kl, a2_kl, M)
 )
 
 # ---------------------------------------------------------------------------
-# Tab3 — prior informativa (α=10), posterior-based
+# Tab3 — prior informativa simétrica (KL a Beta(N·0.5, N·0.5)^2, N=50)
 # ---------------------------------------------------------------------------
-cat("\n=== Tab3: prior informativa α=10 (M =", M, ") ===\n")
+cat("\n=== Tab3: prior informativa simétrica (μ=0.5, N=50) (M =", M, ") ===\n")
 tab3 <- do.call(rbind, lapply(names(grupos), function(k) {
   cat(" -", grupos[[k]]$lab, "\n")
   run_group(grupos[[k]], a0_inf, a1_inf, a2_inf, M)
@@ -133,19 +136,19 @@ print(tab3, row.names = FALSE)
 tex3 <- to_latex(
   tab3,
   label   = "tab3",
-  caption = paste0(
+  caption = sprintf(paste0(
     "TVSFP Project: Bayesian hypothesis testing with informative prior ",
-    "($\\alpha_0=\\alpha_1=\\alpha_2=10$), ",
-    "posterior-based formulation, $a=b=1$, $M=", M, "$.")
+    "($\\alpha_0=%.2f,\\,\\alpha_1=%.2f,\\,\\alpha_2=%.2f$, ",
+    "KL fit to Beta($N\\mu, N(1-\\mu)$)$^2$ with $\\mu=0.5,\\,N=50$), ",
+    "posterior-based formulation, $a=b=1$, $M=%d$."),
+    a0_inf, a1_inf, a2_inf, M)
 )
 
 # ---------------------------------------------------------------------------
-# Tab4 — prior en conflicto (α1=α2=10, α0=90  →  E[θ]=0.1), posterior-based
+# Tab4 — prior en conflicto (KL a Beta(N·0.1, N·0.9)^2, N=50  →  E[θ]≈0.1)
 # La prior espera θ≈0.1 pero los datos THKS muestran θ≈0.3-0.6 → conflicto.
 # ---------------------------------------------------------------------------
-a0_conf <- 90; a1_conf <- 10; a2_conf <- 10
-
-cat("\n=== Tab4: prior en conflicto α1=α2=10, α0=90 (E[θ]=0.1) (M =", M, ") ===\n")
+cat("\n=== Tab4: prior en conflicto (μ=0.1, N=50, E[θ]≈0.1) (M =", M, ") ===\n")
 tab4 <- do.call(rbind, lapply(names(grupos), function(k) {
   cat(" -", grupos[[k]]$lab, "\n")
   run_group(grupos[[k]], a0_conf, a1_conf, a2_conf, M)
@@ -165,11 +168,14 @@ for (i in seq_len(nrow(tab4))) {
 tex4 <- to_latex(
   tab4,
   label   = "tab4",
-  caption = paste0(
+  caption = sprintf(paste0(
     "TVSFP Project: Bayesian hypothesis testing with informative prior ",
     "in conflict with data ",
-    "($\\alpha_1=\\alpha_2=10,\\,\\alpha_0=90$, prior mean $E[\\theta]=0.1$), ",
-    "posterior-based formulation, $a=b=1$, $M=", M, "$.")
+    "($\\alpha_0=%.2f,\\,\\alpha_1=%.2f,\\,\\alpha_2=%.2f$, ",
+    "KL fit to Beta($N\\mu, N(1-\\mu)$)$^2$ with $\\mu=0.1,\\,N=50$, ",
+    "prior mean $E[\\theta]\\approx 0.1$), ",
+    "posterior-based formulation, $a=b=1$, $M=%d$."),
+    a0_conf, a1_conf, a2_conf, M)
 )
 
 # ---------------------------------------------------------------------------

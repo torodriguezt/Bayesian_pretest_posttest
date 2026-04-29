@@ -41,8 +41,8 @@ grupos <- list(
 )
 
 # 3) Hiperparámetros ----------------------------------------------------
-alphas_opt <- c(0.8373879, 0.8410984, 0.8053298)
-a0 <- alphas_opt[1]; a1 <- alphas_opt[2]; a2 <- alphas_opt[3]
+source("priors_config.R")
+a0 <- prior_NI["a0"]; a1 <- prior_NI["a1"]; a2 <- prior_NI["a2"]
 
 # 4) Pipeline para un grupo (sin MCMC) ---------------------------------
 analyze_group <- function(g, label, do_plot = TRUE) {

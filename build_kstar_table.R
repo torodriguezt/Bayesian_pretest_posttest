@@ -12,9 +12,9 @@ library(tidyr)
 setwd("c:/Users/Tomas/BivBetaBinomial_Tomás/BivBetaBinomial_Tomás")
 sourceCpp("BivBetaBinom.cpp")
 
-# --- 1) Hiperparámetros (prior no informativa por KL del artículo) ---------
-alphas_opt <- c(0.8373879, 0.8410984, 0.8053298)
-a0 <- alphas_opt[1]; a1 <- alphas_opt[2]; a2 <- alphas_opt[3]
+# --- 1) Hiperparámetros (prior no informativa por KL, fit_priors_kl.R) -----
+source("priors_config.R")
+a0 <- prior_NI["a0"]; a1 <- prior_NI["a1"]; a2 <- prior_NI["a2"]
 
 # --- 2) Curvas α(k), β(k) y k* para un (n1, n2) dado ----------------------
 analyze_pair <- function(n1, n2, M = 500, a_w = 1, b_w = 1, seed = 42,

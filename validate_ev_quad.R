@@ -42,8 +42,8 @@ grupos <- list(
   nn = prep_school(datos1, "409", "no",  "no")
 )
 
-alphas_opt <- c(0.8373879, 0.8410984, 0.8053298)
-a0 <- alphas_opt[1]; a1 <- alphas_opt[2]; a2 <- alphas_opt[3]
+source("priors_config.R")
+a0 <- prior_NI["a0"]; a1 <- prior_NI["a1"]; a2 <- prior_NI["a2"]
 
 # --- Compilar Stan una sola vez ------------------------------------------
 stan_model_obj <- stan_model("BBpost3.stan")

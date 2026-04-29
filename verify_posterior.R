@@ -9,8 +9,10 @@ library(ggplot2)
 setwd("c:/Users/Tomas/Bayesian_pretest_posttest")
 sourceCpp("BivBetaBinom.cpp")
 
-a0_kl <- 0.8373879; a1_kl <- 0.8410984; a2_kl <- 0.8053298
-a0_inf <- 10; a1_inf <- 10; a2_inf <- 10
+source("priors_config.R")
+a0_kl   <- prior_NI["a0"];   a1_kl   <- prior_NI["a1"];   a2_kl   <- prior_NI["a2"]
+a0_inf  <- prior_INF["a0"];  a1_inf  <- prior_INF["a1"];  a2_inf  <- prior_INF["a2"]
+a0_conf <- prior_CONF["a0"]; a1_conf <- prior_CONF["a1"]; a2_conf <- prior_CONF["a2"]
 
 # Same data
 n <- 150

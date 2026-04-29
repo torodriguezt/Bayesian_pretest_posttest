@@ -15,8 +15,8 @@ library(dplyr)
 setwd("c:/Users/Tomas/BivBetaBinomial_Tomás/BivBetaBinomial_Tomás")
 sourceCpp("BivBetaBinom.cpp")
 
-alphas_opt <- c(0.8373879, 0.8410984, 0.8053298)
-a0 <- alphas_opt[1]; a1 <- alphas_opt[2]; a2 <- alphas_opt[3]
+source("priors_config.R")
+a0 <- prior_NI["a0"]; a1 <- prior_NI["a1"]; a2 <- prior_NI["a2"]
 
 # ---------------------------------------------------------------------------
 # Escenario 1: efecto moderado-chico — p1=0.55, p2=0.40 (15 pp de diferencia)

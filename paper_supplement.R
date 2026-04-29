@@ -18,11 +18,11 @@ sourceCpp("BivBetaBinom.cpp")
 dir.create("output",  showWarnings = FALSE)
 dir.create("Figures", showWarnings = FALSE)
 
-# Hiperparámetros KL-óptimos (no informativos)
-a0_kl <- 0.8373879; a1_kl <- 0.8410984; a2_kl <- 0.8053298
-
-# Hiperparámetros informativos (prior concentrada, usados en el paper)
-a0_inf <- 10; a1_inf <- 10; a2_inf <- 10
+# Hiperparámetros (KL-fitted, ver priors_config.R)
+source("priors_config.R")
+a0_kl   <- prior_NI["a0"];   a1_kl   <- prior_NI["a1"];   a2_kl   <- prior_NI["a2"]
+a0_inf  <- prior_INF["a0"];  a1_inf  <- prior_INF["a1"];  a2_inf  <- prior_INF["a2"]
+a0_conf <- prior_CONF["a0"]; a1_conf <- prior_CONF["a1"]; a2_conf <- prior_CONF["a2"]
 
 M      <- 1500
 set.seed(42)
@@ -227,12 +227,13 @@ compare_tests <- function(n, theta1, theta2, a0, a1, a2, M = 1000,
 
 # Escenarios: efecto nulo, pequeño, moderado, grande
 escenarios <- list(
-  list(n=50, t1=0.50, t2=0.50, lab="Efecto nulo (θ1=θ2=0.50)"),
-  list(n=50, t1=0.55, t2=0.45, lab="Efecto pequeño (Δ=0.10, n=50)"),
-  list(n=25, t1=0.60, t2=0.40, lab="Efecto moderado (Δ=0.20, n=25)"),
-  list(n=25, t1=0.70, t2=0.30, lab="Efecto grande (Δ=0.40, n=25)"),
-  list(n=15, t1=0.60, t2=0.40, lab="Efecto moderado n pequeño (n=15)"),
-  list(n=100, t1=0.52, t2=0.48, lab="Efecto mínimo n grande (Δ=0.04, n=100)")
+  list(n=50,  t1=0.50, t2=0.50, lab="Efecto nulo (θ1=θ2=0.50)"),
+  list(n=50,  t1=0.55, t2=0.45, lab="Efecto pequeño (Δ=0.10, n=50)"),
+  list(n=25,  t1=0.60, t2=0.40, lab="Efecto moderado (Δ=0.20, n=25)"),
+  list(n=25,  t1=0.70, t2=0.30, lab="Efecto grande (Δ=0.40, n=25)"),
+  list(n=15,  t1=0.60, t2=0.40, lab="Efecto moderado n pequeño (n=15)"),
+  list(n=100, t1=0.52, t2=0.48, lab="Efecto mínimo n grande (Δ=0.04, n=100)"),
+  list(n=400, t1=0.55, t2=0.45, lab="Efecto pequeño n grande (Δ=0.10, n=400)")
 )
 
 cmp <- do.call(rbind, lapply(seq_along(escenarios), function(i) {
@@ -324,21 +325,32 @@ cat("→ Figures/decision_vs_n_clean.png\n")
 # ===========================================================================
 cat("\n=== 4. Sensibilidad a hiperparámetros ===\n")
 
-cat("  Prior KL-óptima (α≈0.84)...\n")
+cat("  Prior no informativa (KL→U)...\n")
 tab_kl <- do.call(rbind, lapply(names(grupos), function(k) {
   r <- run_group(grupos[[k]], a0_kl, a1_kl, a2_kl, M)
-  r$prior <- "KL-optimal (α≈0.84)"
+  r$prior <- "Non-informative (KL)"
   r
 }))
 
-cat("  Prior informativa (α=10)...\n")
+cat("  Prior informativa simétrica (μ=0.5, N=50)...\n")
 tab_i2 <- do.call(rbind, lapply(names(grupos), function(k) {
   r <- run_group(grupos[[k]], a0_inf, a1_inf, a2_inf, M)
-  r$prior <- "Informative (α=10)"
+  r$prior <- "Informative (μ=0.5)"
   r
 }))
 
-sens <- rbind(tab_kl, tab_i2)
+cat("  Prior con conflicto (μ=0.1, N=50)...\n")
+tab_i3 <- do.call(rbind, lapply(names(grupos), function(k) {
+  r <- run_group(grupos[[k]], a0_conf, a1_conf, a2_conf, M)
+  r$prior <- "Conflict (μ=0.1)"
+  r
+}))
+
+sens <- rbind(tab_kl, tab_i2, tab_i3)
+sens$prior <- factor(sens$prior,
+                     levels = c("Non-informative (KL)",
+                                "Informative (μ=0.5)",
+                                "Conflict (μ=0.1)"))
 cat("\nComparación k* y ev_obs por prior:\n")
 print(sens[, c("group", "prior", "ev_obs", "k_star", "decision")],
       digits = 4, row.names = FALSE)
@@ -346,7 +358,7 @@ print(sens[, c("group", "prior", "ev_obs", "k_star", "decision")],
 p_sens <- ggplot(sens, aes(x = prior, y = k_star, group = group, color = group)) +
   geom_line(linewidth = 0.8, linetype = "dashed") +
   geom_point(aes(shape = decision), size = 4) +
-  geom_hline(data = sens[sens$prior == "KL-optimal (α≈0.84)", ],
+  geom_hline(data = sens[sens$prior == "Non-informative (KL)", ],
              aes(yintercept = ev_obs, color = group),
              linetype = "dotted", linewidth = 0.5) +
   scale_shape_manual(values = c("reject H" = 17, "do not reject" = 16)) +
