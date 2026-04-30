@@ -40,7 +40,7 @@ weight_configs <- data.frame(
   stringsAsFactors = FALSE
 )
 
-n_grid <- c(30, 50, 75, 100, 150)
+n_grid <- c(30, 50, 75, 100, 150, 200, 300, 400, 450)
 scenarios <- expand.grid(
   n = n_grid,
   scenario_type = c("null", "small", "medium", "large")
@@ -67,6 +67,27 @@ M_sim  <- 1000
 set.seed(42)
 
 # ============================================================================
+# RESUME: load existing results and skip already-computed n values
+# ============================================================================
+csv_path <- "output/simulation_replicated_weights.csv"
+if (file.exists(csv_path)) {
+  existing <- read.csv(csv_path, stringsAsFactors = FALSE)
+  existing_n <- sort(unique(existing$n))
+  cat(sprintf("Resuming: found existing results for n in {%s}\n",
+              paste(existing_n, collapse = ", ")))
+  scenarios_to_run <- scenarios[!scenarios$n %in% existing_n, ]
+  if (nrow(scenarios_to_run) == 0) {
+    cat("All scenarios already computed. Regenerating plots only.\n")
+  } else {
+    cat(sprintf("New n values to run: {%s}\n\n",
+                paste(sort(unique(scenarios_to_run$n)), collapse = ", ")))
+  }
+} else {
+  existing        <- NULL
+  scenarios_to_run <- scenarios
+}
+
+# ============================================================================
 # 2. ANALYSIS FUNCTION
 # ============================================================================
 
@@ -89,16 +110,16 @@ cat(sprintf("R = %d replicates per scenario\n", R_reps))
 cat(sprintf("M = %d e-value simulations per analysis\n", M_sim))
 cat(sprintf("Priors: %s\n", paste(prior_levels, collapse = ", ")))
 cat(sprintf("Weights: %d configs\n", nrow(weight_configs)))
-cat(sprintf("Total analyses: %d x %d priors = %d\n\n",
-            nrow(scenarios) * R_reps, length(priors),
-            nrow(scenarios) * R_reps * length(priors)))
+cat(sprintf("Total new analyses: %d x %d priors = %d\n\n",
+            nrow(scenarios_to_run) * R_reps, length(priors),
+            nrow(scenarios_to_run) * R_reps * length(priors)))
 
 all_results <- list()
 t_start <- Sys.time()
 
-for (i in seq_len(nrow(scenarios))) {
-  s <- scenarios[i, ]
-  cat(sprintf("[%2d/%d] n=%3d, %s ", i, nrow(scenarios), s$n, s$d_label))
+for (i in seq_len(nrow(scenarios_to_run))) {
+  s <- scenarios_to_run[i, ]
+  cat(sprintf("[%2d/%d] n=%3d, %s ", i, nrow(scenarios_to_run), s$n, s$d_label))
 
   # rej[r, w, prior]: reject indicator;  k_mat[r, w, prior]: k* values
   rej   <- array(FALSE, dim = c(R_reps, nrow(weight_configs), length(priors)),
@@ -151,7 +172,16 @@ for (i in seq_len(nrow(scenarios))) {
       collapse = " ")))
 }
 
-all_results <- do.call(rbind, all_results)
+if (length(all_results) > 0) {
+  new_results <- do.call(rbind, all_results)
+  if (!is.null(existing)) {
+    all_results <- dplyr::bind_rows(existing, new_results)
+  } else {
+    all_results <- new_results
+  }
+} else {
+  all_results <- existing
+}
 all_results$prior <- factor(all_results$prior, levels = prior_levels)
 
 elapsed <- as.numeric(Sys.time() - t_start, units = "mins")
@@ -213,7 +243,7 @@ p_type1 <- all_results %>%
              color = weight_label, linetype = prior)) +
   geom_line(linewidth = 1) + geom_point(size = 2.5) +
   geom_hline(yintercept = 5, linetype = "dotted", color = "grey40") +
-  annotate("text", x = 30, y = 7, label = "5% (frequentist)",
+  annotate("text", x = 50, y = 7, label = "5% (frequentist)",
            color = "grey40", size = 3) +
   scale_color_manual(values = weight_colors) +
   scale_y_continuous(limits = c(0, 60), breaks = seq(0, 60, 10)) +

@@ -35,7 +35,7 @@ weight_configs <- data.frame(
 )
 
 # Se incluyen n pequenos (15, 25) para capturar la ventaja del FBST ahi
-n_grid <- c(15, 25, 30, 50, 75, 100, 150)
+n_grid <- c(15, 25, 30, 50, 75, 100, 150, 200, 300, 400, 450)
 
 scenarios <- expand.grid(
   n             = n_grid,
@@ -61,6 +61,27 @@ scenarios <- expand.grid(
 R_reps <- 200
 M_sim  <- 1000
 set.seed(42)
+
+# ============================================================================
+# RESUME: load existing results and skip already-computed n values
+# ============================================================================
+csv_path <- "output/simulation_vs_mcnemar.csv"
+if (file.exists(csv_path)) {
+  existing <- read.csv(csv_path, stringsAsFactors = FALSE)
+  existing_n <- sort(unique(existing$n))
+  cat(sprintf("Resuming: found existing results for n in {%s}\n",
+              paste(existing_n, collapse = ", ")))
+  scenarios_to_run <- scenarios[!scenarios$n %in% existing_n, ]
+  if (nrow(scenarios_to_run) == 0) {
+    cat("All scenarios already computed. Regenerating plots only.\n")
+  } else {
+    cat(sprintf("New n values to run: {%s}\n\n",
+                paste(sort(unique(scenarios_to_run$n)), collapse = ", ")))
+  }
+} else {
+  existing        <- NULL
+  scenarios_to_run <- scenarios
+}
 
 # ============================================================================
 # 2. FUNCIONES
@@ -101,14 +122,14 @@ cat("\n========== FBST vs McNemar (simulacion replicada) ==========\n")
 cat(sprintf("R = %d replicates | M = %d e-value sims | Prior: KL no-informativa\n",
             R_reps, M_sim))
 cat(sprintf("n grid: %s\n", paste(n_grid, collapse = ", ")))
-cat(sprintf("Escenarios totales: %d\n\n", nrow(scenarios)))
+cat(sprintf("Escenarios nuevos: %d\n\n", nrow(scenarios_to_run)))
 
 all_results <- list()
 t_start     <- Sys.time()
 
-for (i in seq_len(nrow(scenarios))) {
-  s <- scenarios[i, ]
-  cat(sprintf("[%2d/%d] n=%3d, %s ", i, nrow(scenarios), s$n, s$d_label))
+for (i in seq_len(nrow(scenarios_to_run))) {
+  s <- scenarios_to_run[i, ]
+  cat(sprintf("[%2d/%d] n=%3d, %s ", i, nrow(scenarios_to_run), s$n, s$d_label))
 
   mcn_rej  <- logical(R_reps)
   fbst_rej <- matrix(FALSE, R_reps, nrow(weight_configs))
@@ -153,7 +174,16 @@ for (i in seq_len(nrow(scenarios))) {
               mean(fbst_rej[, 2]) * 100))
 }
 
-all_results       <- do.call(rbind, all_results)
+if (length(all_results) > 0) {
+  new_results <- do.call(rbind, all_results)
+  if (!is.null(existing)) {
+    all_results <- dplyr::bind_rows(existing, new_results)
+  } else {
+    all_results <- new_results
+  }
+} else {
+  all_results <- existing
+}
 method_order      <- c("McNemar", "FBST (a=1)", "FBST (a=5)", "FBST (a=20)")
 all_results$label <- factor(all_results$label, levels = method_order)
 
@@ -201,7 +231,7 @@ p_power <- ggplot(all_results,
   geom_line(linewidth = 0.9) +
   geom_point(size = 2.2) +
   geom_hline(yintercept = 5, linetype = "dotted", color = "grey40") +
-  annotate("text", x = 15, y = 8, label = "5%", color = "grey40", size = 3) +
+  annotate("text", x = 30, y = 8, label = "5%", color = "grey40", size = 3) +
   facet_wrap(~d_label, ncol = 2) +
   scale_color_manual(values = method_colors) +
   scale_linetype_manual(values = method_lines) +

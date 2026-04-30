@@ -16,7 +16,7 @@ library(ggplot2)
 library(tidyr)
 library(lattice)
 
-setwd("c:/Users/Tomas/BivBetaBinomial_Tomás/BivBetaBinomial_Tomás")
+setwd("c:/Users/Tomas/Bayesian_pretest_posttest")
 sourceCpp("BivBetaBinom.cpp")
 
 dir.create("Figures", showWarnings = FALSE)
@@ -79,24 +79,24 @@ for (N in ns_prior) {
 cat("\n=== Curvas posterior-based (THKS) ===\n")
 
 datos1 <- tvsfp
-prep_school <- function(d, sid, sb, tv) {
-  x <- d %>% mutate(binTHKS = ifelse(THKS >= 3, 1, 0)) %>%
-        filter(school == sid, school.based == sb, tv.based == tv)
-  list(X = (x %>% group_by(stage) %>% summarise(B = sum(binTHKS)))$B,
-       n = (x %>% group_by(stage) %>% summarise(n = n()))$n)
-}
-prep_global <- function(d, sb, tv) {
-  x <- d %>% mutate(binTHKS = ifelse(THKS >= 3, 1, 0)) %>%
-        filter(school.based == sb, tv.based == tv)
-  list(X = (x %>% group_by(stage) %>% summarise(B = sum(binTHKS)))$B,
-       n = (x %>% group_by(stage) %>% summarise(n = n()))$n)
+
+# Grupos definidos solo por condicion de tratamiento (sin filtro por escuela)
+prep_group <- function(d, sb, tv) {
+  wide <- d %>%
+    mutate(binTHKS = ifelse(THKS >= 3, 1, 0)) %>%
+    filter(school.based == sb, tv.based == tv) %>%
+    select(id, stage, binTHKS) %>%
+    pivot_wider(names_from = stage, values_from = binTHKS) %>%
+    filter(!is.na(pre), !is.na(post))
+  list(X = c(sum(wide$pre), sum(wide$post)),
+       n = c(nrow(wide), nrow(wide)))
 }
 
 grupos <- list(
-  yy = list(g = prep_school(datos1, "404", "yes", "yes"), lab = "CC + TV"),
-  yn = list(g = prep_school(datos1, "408", "yes", "no"),  lab = "CC, no TV"),
-  ny = list(g = prep_global(datos1,         "no",  "yes"), lab = "no CC, TV"),
-  nn = list(g = prep_school(datos1, "409", "no",  "no"),  lab = "no CC, no TV")
+  yy = list(g = prep_group(datos1, "yes", "yes"), lab = "CC + TV"),
+  yn = list(g = prep_group(datos1, "yes", "no"),  lab = "CC, no TV"),
+  ny = list(g = prep_group(datos1, "no",  "yes"), lab = "no CC, TV"),
+  nn = list(g = prep_group(datos1, "no",  "no"),  lab = "no CC, no TV")
 )
 
 M_post <- 1000

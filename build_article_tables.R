@@ -183,3 +183,89 @@ cat("kstar_posterior_table.tex →  Tabla por tratamiento, posterior-based\n")
 cat("\nNota: las asignaciones de escuela en los 4 grupos vienen de THKS_run.R.\n")
 cat("Si el artículo usa otra agrupación, hay que ajustar `grupos` y re-correr\n")
 cat("sólo la Tabla B (la A es genérica y no depende de los datos).\n")
+
+# ===========================================================================
+# McNemar's test — datos reales THKS (comparación con FBST)
+# ===========================================================================
+cat("\n========== McNemar's test — datos reales THKS ==========\n")
+
+# Necesita los pares (pre, post) por individuo → reshape a wide
+mcnemar_group <- function(d, label, sid = NULL, sb, tv) {
+  x <- d %>%
+    mutate(binTHKS = ifelse(THKS >= 3, 1, 0))
+  if (!is.null(sid)) {
+    x <- x %>% filter(school == sid, school.based == sb, tv.based == tv)
+  } else {
+    x <- x %>% filter(school.based == sb, tv.based == tv)
+  }
+
+  wide <- x %>%
+    select(id, stage, binTHKS) %>%
+    tidyr::pivot_wider(names_from = stage, values_from = binTHKS) %>%
+    filter(!is.na(pre), !is.na(post))
+
+  tbl  <- table(pre = wide$pre, post = wide$post)
+  test <- mcnemar.test(tbl, correct = FALSE)
+
+  # Discordant counts
+  n01 <- if (all(dim(tbl) == c(2,2))) tbl["0","1"] else NA
+  n10 <- if (all(dim(tbl) == c(2,2))) tbl["1","0"] else NA
+
+  data.frame(
+    group    = label,
+    n_pairs  = nrow(wide),
+    n01      = n01,   # pre=0 → post=1 (improvement)
+    n10      = n10,   # pre=1 → post=0 (deterioration)
+    chi2     = round(as.numeric(test$statistic), 4),
+    p_value  = round(test$p.value, 4),
+    decision = ifelse(test$p.value < 0.05, "Reject H", "Do not reject")
+  )
+}
+
+library(tidyr)
+
+mcnemar_results <- rbind(
+  mcnemar_group(datos1, "CC + TV",       sid = "404", sb = "yes", tv = "yes"),
+  mcnemar_group(datos1, "CC, no TV",     sid = "408", sb = "yes", tv = "no"),
+  mcnemar_group(datos1, "no CC, TV",     sid = NULL,  sb = "no",  tv = "yes"),
+  mcnemar_group(datos1, "no CC, no TV",  sid = "409", sb = "no",  tv = "no")
+)
+
+print(mcnemar_results, row.names = FALSE)
+
+# Tabla comparativa FBST vs McNemar
+cat("\n--- Comparación FBST vs McNemar ---\n")
+comparison <- data.frame(
+  group         = tabB$group,
+  ev_obs        = round(tabB$ev_obs, 4),
+  k_star        = round(tabB$k_star, 4),
+  fbst_decision = ifelse(tabB$ev_obs <= tabB$k_star, "Reject H", "Do not reject"),
+  p_mcnemar     = mcnemar_results$p_value,
+  mcn_decision  = mcnemar_results$decision
+)
+print(comparison, row.names = FALSE)
+
+# LaTeX tabla comparativa
+tex_comp <- c(
+  "\\begin{table}[!h]",
+  "\\centering",
+  paste0("\\caption{Comparison of FBST (non-informative KL-optimal prior, $a=b=1$) ",
+         "and McNemar's test for the four TVSFP treatment groups.}"),
+  "\\label{tab:fbst_mcnemar}",
+  "\\begin{tabular}{lcccccc}",
+  "\\toprule",
+  paste("Treatment & $ev(\\mathbf{H};\\mathbf{X})$ & $k^*$ & FBST decision",
+        "& McNemar $\\chi^2$ & $p$-value & McNemar decision \\\\"),
+  "\\midrule"
+)
+for (i in seq_len(nrow(comparison))) {
+  r  <- comparison[i, ]
+  rm <- mcnemar_results[i, ]
+  tex_comp <- c(tex_comp,
+    sprintf("%s & %.4f & %.4f & %s & %.4f & %.4f & %s \\\\",
+            r$group, r$ev_obs, r$k_star, r$fbst_decision,
+            rm$chi2, r$p_mcnemar, r$mcn_decision))
+}
+tex_comp <- c(tex_comp, "\\bottomrule", "\\end{tabular}", "\\end{table}")
+writeLines(tex_comp, "output/fbst_mcnemar_comparison.tex")
+cat("\n→ output/fbst_mcnemar_comparison.tex\n")
